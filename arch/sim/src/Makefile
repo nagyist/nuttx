@@ -90,6 +90,7 @@ endif
 
 ifeq ($(CONFIG_SCHED_BACKTRACE),y)
 CSRCS += sim_backtrace.c
+STDLIBS += -lunwind
 endif
 
 ifeq ($(CONFIG_ARCH_HAVE_FORK),y)
