@@ -1,5 +1,5 @@
 /****************************************************************************
- * libs/libc/pthread/pthread_mutex_inconsistent.c
+ * include/nuttx/mutex_type.h
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -20,63 +20,60 @@
  *
  ****************************************************************************/
 
+#ifndef __INCLUDE_NUTTX_MUTEX_TYPE_H
+#define __INCLUDE_NUTTX_MUTEX_TYPE_H
+
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
 #include <nuttx/config.h>
 
-#include <pthread.h>
-#include <sched.h>
-#include <assert.h>
-#include <errno.h>
-
-#include <nuttx/sched.h>
 #include <nuttx/semaphore.h>
-#include <nuttx/tls.h>
-#include <nuttx/mutex.h>
 
-#include "pthread.h"
-
-/****************************************************************************
- * Public Functions
- ****************************************************************************/
-
-/****************************************************************************
- * Name: pthread_mutex_inconsistent
- *
- * Description:
- *   This function is called when a pthread is terminated via either
- *   pthread_exit() or pthread_cancel().  It will check for any mutexes
- *   held by exitting thread.  It will mark them as inconsistent and
- *   then wake up the highest priority waiter for the mutex.  That
- *   instance of pthread_mutex_lock() will then return EOWNERDEAD.
- *
- * Input Parameters:
- *   tcb -- a reference to the TCB of the exitting pthread.
- *
- * Returned Value:
- *   None.
- *
- ****************************************************************************/
-
-void pthread_mutex_inconsistent(FAR struct tls_info_s *tls)
+#undef EXTERN
+#if defined(__cplusplus)
+#define EXTERN extern "C"
+extern "C"
 {
-  FAR struct pthread_mutex_s *mutex;
+#else
+#define EXTERN extern
+#endif
 
-  /* Remove and process each mutex held by this task */
+/****************************************************************************
+ * Pre-processor Definitions
+ ****************************************************************************/
 
-  while (tls->tl_mhead != NULL)
-    {
-      /* Remove the mutex from the TCB list */
+#define NXMUTEX_INITIALIZER \
+  {NXSEM_INITIALIZER(NXSEM_NO_MHOLDER, SEM_TYPE_MUTEX | SEM_PRIO_INHERIT)}
 
-      mutex         = tls->tl_mhead;
-      tls->tl_mhead = mutex->flink;
-      mutex->flink  = NULL;
+#define NXRMUTEX_INITIALIZER {NXMUTEX_INITIALIZER, 0}
 
-      /* Mark the mutex as INCONSISTENT and wake up any waiting thread */
+/****************************************************************************
+ * Public Type Definitions
+ ****************************************************************************/
 
-      mutex->flags |= _PTHREAD_MFLAGS_INCONSISTENT;
-      mutex_reset(&mutex->mutex);
-    }
+struct mutex_s
+{
+  sem_t sem;
+#ifdef CONFIG_LIBC_MUTEX_BACKTRACE
+  FAR void *stack;
+#endif
+};
+
+typedef struct mutex_s mutex_t;
+
+struct rmutex_s
+{
+  mutex_t mutex;
+  unsigned int count;
+};
+
+typedef struct rmutex_s rmutex_t;
+
+#undef EXTERN
+#if defined(__cplusplus)
 }
+#endif
+
+#endif /* __INCLUDE_NUTTX_MUTEX_TYPE_H */
