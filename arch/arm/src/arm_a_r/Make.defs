@@ -1,5 +1,5 @@
 ############################################################################
-# arch/arm/src/arm/Make.defs
+# arch/arm/src/arm_a_r/Make.defs
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more
 # contributor license agreements.  See the NOTICE file distributed with
@@ -18,22 +18,8 @@
 #
 ############################################################################
 
-# Common ARM files
+# Common ARM_A_R files
 
-include common/Make.defs
-include arm_a_r/Make.defs
-
-HEAD_ASRC  = arm_head.S
-
-CMN_CSRCS += arm_dataabort.c arm_doirq.c arm_initialstate.c
-CMN_CSRCS += arm_prefetchabort.c arm_syscall.c arm_tcbinfo.c
-CMN_CSRCS += arm_undefinedinsn.c
-
-CMN_ASRCS += arm_cache.S arm_vectors.S arm_vectortab.S
-CMN_ASRCS += arm_saveusercontext.S
-
-ifeq ($(CONFIG_LEGACY_PAGING),y)
-  CMN_CSRCS += arm_pginitialize.c arm_checkmapping.c arm_allocpage.c arm_va2pte.c
+ifneq ($(CONFIG_DISABLE_SIGNALS),y)
+  CMN_CSRCS += arm_schedulesigaction.c arm_sigdeliver.c
 endif
-
-VPATH += arm_a_r

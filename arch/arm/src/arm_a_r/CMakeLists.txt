@@ -1,5 +1,5 @@
 # ##############################################################################
-# arch/arm/src/CMakeLists.txt
+# arch/arm/src/arm_a_r/CMakeLists.txt
 #
 # Licensed to the Apache Software Foundation (ASF) under one or more contributor
 # license agreements.  See the NOTICE file distributed with this work for
@@ -18,20 +18,8 @@
 #
 # ##############################################################################
 
-add_subdirectory(${ARCH_SUBDIR})
-add_subdirectory(${NUTTX_CHIP_ABS_DIR} EXCLUDE_FROM_ALL exclude_chip)
-add_subdirectory(common)
-if(NOT ${ARCH_SUBDIR_ARM})
-  add_subdirectory(${ARCH_SUBDIR_ARM})
+if(NOT CONFIG_DISABLE_SIGNALS)
+  set(CSRCS arm_schedulesigaction.c arm_sigdeliver.c)
 endif()
 
-# Include directories (before system ones) as PUBLIC so that it can be exposed
-# to libboard
-target_include_directories(arch BEFORE PUBLIC ${NUTTX_CHIP_ABS_DIR} common
-                                              ${ARCH_SUBDIR} ${ARCH_SUBDIR_ARM})
-
-if(NOT CONFIG_BUILD_FLAT)
-  target_include_directories(
-    arch_interface BEFORE PUBLIC ${NUTTX_CHIP_ABS_DIR} common ${ARCH_SUBDIR}
-                                 ${ARCH_SUBDIR_ARM})
-endif()
+target_sources(arch PRIVATE ${CSRCS})
