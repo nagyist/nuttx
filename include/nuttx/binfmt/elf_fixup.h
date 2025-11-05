@@ -1,5 +1,5 @@
 /****************************************************************************
- * binfmt/binfmt_initialize.c
+ * include/nuttx/binfmt/elf_fixup.h
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -20,69 +20,39 @@
  *
  ****************************************************************************/
 
+#ifndef __INCLUDE_NUTTX_BINFMT_ELF_FIXUP_H
+#define __INCLUDE_NUTTX_BINFMT_ELF_FIXUP_H
+
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
 #include <nuttx/config.h>
-
-#include <nuttx/binfmt/binfmt.h>
-
-#include <debug.h>
-
-#include "binfmt.h"
-
-#ifndef CONFIG_BINFMT_DISABLE
+#include <stddef.h>
+#include <elf.h>
 
 /****************************************************************************
- * Public Functions
+ * Public Types
  ****************************************************************************/
-
-/****************************************************************************
- * Name: binfmt_initialize
- *
- * Description:
- *   initialize binfmt subsystem
- *
- ****************************************************************************/
-
-void binfmt_initialize(void)
-{
-  int ret;
-
-#ifdef CONFIG_BUILTIN
-  ret = builtin_initialize();
-  if (ret < 0)
-    {
-      berr("ERROR: builtin_initialize failed: %d\n", ret);
-    }
-#endif
-
-#ifdef CONFIG_ELF
-  ret = elf_initialize();
-  if (ret < 0)
-    {
-      berr("ERROR: elf_initialize failed: %d\n", ret);
-    }
-#endif
 
 #ifdef CONFIG_ELF_FIXUP
-  ret = elf_fixup_initialize();
-  if (ret < 0)
-    {
-      berr("ERROR: elf_fixup_initialize failed: %d\n", ret);
-    }
+struct elf_fixup_s
+{
+  const char      name[NAME_MAX + 1];
+  uintptr_t       entry;
+  size_t          stacksize;
+  int             priority;
+#ifdef CONFIG_SCHED_USER_IDENTITY
+  uid_t           uid;
+  gid_t           gid;
+  int             mode;
+#endif
+#ifdef CONFIG_MM_TASK_HEAP
+  size_t          heapstart;
+  size_t          heapsize;
+#endif
+  Elf_Phdr        phdr[CONFIG_ELF_FIXUP_NSEGMENTS];
+};
 #endif
 
-#ifdef CONFIG_NXFLAT
-  ret = nxflat_initialize();
-  if (ret < 0)
-    {
-      berr("ERROR: nxflat_initialize failed: %d\n", ret);
-    }
-#endif
-
-  UNUSED(ret);
-}
-
-#endif /* CONFIG_BINFMT_DISABLE */
+#endif /* __INCLUDE_NUTTX_BINFMT_ELF_FIXUP_H */
