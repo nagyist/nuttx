@@ -1,5 +1,5 @@
 /****************************************************************************
- * libs/libc/pthread/pthread_keydelete.c
+ * libs/libc/environ/env_putenv.c
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -24,67 +24,73 @@
  * Included Files
  ****************************************************************************/
 
-#include <nuttx/config.h>
-
-#include <pthread.h>
-#include <assert.h>
+#include <string.h>
 #include <errno.h>
 
-#include <nuttx/mutex.h>
-#include <nuttx/tls.h>
-
-#if defined(CONFIG_TLS_NELEM) && CONFIG_TLS_NELEM > 0
+#include <nuttx/lib/lib.h>
 
 /****************************************************************************
  * Public Functions
  ****************************************************************************/
 
 /****************************************************************************
- * Name: pthread_key_delete
+ * Name: putenv
  *
  * Description:
- *   This POSIX function deletes a thread-specific data key
- *   previously returned by pthread_key_create().
+ *   The putenv() function adds or changes the value of environment
+ *   variables.
+ *   The argument string is of the form name=value. If name does not already
+ *   exist in  the  environment, then string is added to the environment. If
+ *   name does exist, then the value of name in the environment is changed to
+ *   value.
  *
  * Input Parameters:
- *   key - the key to delete
+ *   name=value string describing the environment setting to add/modify
  *
  * Returned Value:
- *   Returns zero (OK) on success.  EINVAL may be returned if an invalid
- *   key is received.
+ *   Zero on success
  *
- * POSIX Compatibility:
+ * Assumptions:
+ *   Not called from an interrupt handler
  *
  ****************************************************************************/
 
-int pthread_key_delete(pthread_key_t key)
+int putenv(FAR const char *string)
 {
-  FAR struct task_info_s *info = task_get_info();
-  FAR struct tls_info_s *tls = tls_get_info();
-  int ret = EINVAL;
+  FAR char *pname;
+  FAR char *pequal;
+  int ret = OK;
 
-  DEBUGASSERT(info != NULL);
-  DEBUGASSERT(key >= 0 && key < CONFIG_TLS_NELEM);
-  if (key >= 0 && key < CONFIG_TLS_NELEM)
+  /* Verify that a string was passed */
+
+  if (!string)
     {
-      /* This is done while holding a semaphore here to avoid concurrent
-       * modification of the group TLS index set.
-       */
-
-      ret = nxrmutex_lock(&info->ta_lock);
-      if (ret == OK)
-        {
-          info->ta_tlsdtor[key] = NULL;
-          tls->tl_elem[key]     = 0;
-          nxrmutex_unlock(&info->ta_lock);
-        }
-      else
-        {
-          ret = -ret;
-        }
+      ret = EINVAL;
+      goto errout;
     }
 
-  return ret;
-}
+  /* Parse the name=value string */
 
-#endif /* CONFIG_TLS_NELEM */
+  pname = strdup(string);
+  if (!pname)
+    {
+      ret = ENOMEM;
+      goto errout;
+    }
+
+  pequal = strchr(pname, '=');
+  if (pequal)
+    {
+      /* Then let setenv do all of the work */
+
+      *pequal = '\0';
+      ret = setenv(pname, pequal + 1, TRUE);
+    }
+
+  lib_ufree(pname);
+  return ret;
+
+errout:
+  set_errno(ret);
+  return ERROR;
+}
