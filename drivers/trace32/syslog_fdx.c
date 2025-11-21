@@ -1,5 +1,5 @@
 /****************************************************************************
- * include/nuttx/trace32/fdx.h
+ * drivers/trace32/syslog_fdx.c
  *
  * SPDX-License-Identifier: Apache-2.0
  *
@@ -20,53 +20,73 @@
  *
  ****************************************************************************/
 
-#ifndef __INCLUDE_NUTTX_TRACE32_FDX_H
-#define __INCLUDE_NUTTX_TRACE32_FDX_H
-
 /****************************************************************************
  * Included Files
  ****************************************************************************/
 
 #include <nuttx/config.h>
-#include <nuttx/streams.h>
+
+#include <errno.h>
+#include <nuttx/spinlock.h>
 #include <nuttx/syslog/syslog.h>
 
+#include "t32fdx/t32fdx.h"
+
 /****************************************************************************
- * Type Declarations
+ * Private Types
  ****************************************************************************/
 
-#ifdef CONFIG_STREAM_FDX
-struct lib_fdxoutstream_s
+struct syslogfdx_channel_s
 {
-  struct lib_outstream_s common;
-  FAR void *channel;
+  T32_FDX_BUFFER header;
+  T32_FDX_DATATYPE data[CONFIG_SYSLOG_FDX_BUFSIZE];
   spinlock_t lock;
 };
-#endif
 
 /****************************************************************************
- * Public Function Prototypes
+ * Private Data
  ****************************************************************************/
 
-#ifdef CONFIG_STREAM_FDX
+static struct syslogfdx_channel_s g_fdx_syslog_channel =
+{
+  .header.transferchannel = 0x01,
+  .header.size = CONFIG_SYSLOG_FDX_BUFSIZE,
+  .lock = SP_UNLOCKED,
+};
+
 /****************************************************************************
- * Name: lib_fdxoutstream_open
+ * Public Functions
  ****************************************************************************/
 
-void lib_fdxoutstream_open(FAR struct lib_fdxoutstream_s *stream,
-                           FAR void *buf, size_t size);
+int syslog_fdx_putc(FAR syslog_channel_t *channel, int ch)
+{
+  irqstate_t flags;
+  char c = ch;
 
-/****************************************************************************
- * Name: lib_fdxoutstream_close
- ****************************************************************************/
+  if (!T32_Fdx_Is_Enable(&g_fdx_syslog_channel))
+    {
+      return -EIO;
+    }
 
-void lib_fdxoutstream_close(FAR struct lib_fdxoutstream_s *stream);
-#endif
+  flags = spin_lock_irqsave(&g_fdx_syslog_channel.lock);
+  T32_Fdx_Send(&g_fdx_syslog_channel, &c, 1);
+  spin_unlock_irqrestore(&g_fdx_syslog_channel.lock, flags);
+  return ch;
+}
 
-#ifdef CONFIG_SYSLOG_FDX
-int syslog_fdx_putc(FAR syslog_channel_t *channel, int ch);
 ssize_t syslog_fdx_write(FAR syslog_channel_t *channel,
-                         FAR const char *buffer, size_t buflen);
-#endif
+                         FAR const char *buffer, size_t buflen)
+{
+  irqstate_t flags;
+  int ret;
 
-#endif /* __INCLUDE_NUTTX_TRACE32_FDX_H */
+  if (!T32_Fdx_Is_Enable(&g_fdx_syslog_channel))
+    {
+      return -EIO;
+    }
+
+  flags = spin_lock_irqsave(&g_fdx_syslog_channel.lock);
+  ret = T32_Fdx_Send(&g_fdx_syslog_channel, (FAR void *)buffer, buflen);
+  spin_unlock_irqrestore(&g_fdx_syslog_channel.lock, flags);
+  return ret > 0 ? ret : -EIO;
+}
