@@ -952,7 +952,7 @@ int psock_udp_cansend(FAR struct udp_conn_s *conn)
 
   if (udp_wrbuffer_test() < 0 || iob_navail(false) <= 0
 #if CONFIG_NET_SEND_BUFSIZE > 0
-      || udp_wrbuffer_inqueue_size(conn) >= conn->sndbufs
+      || udp_wrbuffer_inqueue_size(conn) >= conn->sconn.s_sndbufs
 #endif
      )
     {
